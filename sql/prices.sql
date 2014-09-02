@@ -8,5 +8,5 @@ CREATE TABLE `prices` (
 	`close_price`	FLOAT(5,2) NOT NULL,
 	`volume`		BIGINT(12) NULL,
 	`adj_close`		FLOAT(5,2) NULL,
-	PRIMARY KEY (date,symbol))
+	PRIMARY KEY (quote_date,symbol))
 ENGINE=InnoDB DEFAULT CHARSET=latin1
