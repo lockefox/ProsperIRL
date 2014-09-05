@@ -24,7 +24,7 @@ class Quandl_sourcelist(object):
 			(base_query,dataset_format,search_parameters,self.per_page)
 		if quantl_token != '':
 			self.query = '%sauth_token=%s&' % (self.query,quantl_token)
-	def fetchResults(self, fetch_docs = True, fetch_sources = False):
+	def fetchResults(self, fetch_docs = True, write_SQL = True, fetch_sources = False):
 		page_number = 1
 		keep_querying = True
 		query_results_JSON = {}
@@ -38,7 +38,7 @@ class Quandl_sourcelist(object):
 			
 			JSON_data = json.loads(response_str)
 			responses_reported = JSON_data['per_page']
-			data_returned = len(JSON_data['highlighting'])
+			data_returned = len(JSON_data['highlighting']) #originally pulled 'docs' but some id's are hidden from 'docs' and show on highlighting
 			
 			if data_returned < responses_reported:
 				keep_querying = False
@@ -131,7 +131,10 @@ def _snooze(headers):
 			snooze_period = default_sleep * allowance_used * 4
 	if snooze_period > 0:
 		time.sleep(default_sleep)
-		
+
+def _initSQL():
+	None
+	
 def main():
 	test_obj = {}
 	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX')
