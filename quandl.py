@@ -15,8 +15,10 @@ quantl_token  = conf.get('QUANDL','token')
 user_agent    = conf.get('GLOBALS','user_agent')
 fetch_retry   = int(conf.get('GLOBALS','default_retries'))
 default_sleep = int(conf.get('GLOBALS','default_sleep'))
+snooze_routine= conf.get('QUANDL','query_limit_period')
 
-class Quandl_sourcelist(Class):
+
+class Quandl_sourcelist(object):
 	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
 		self.per_page = conf.get('QUANDL','per_page')
 		self.query = '%sdatasets.%s?%s&per_page=%s&auth_token=%s&' % \
@@ -100,4 +102,27 @@ def fetchUrl(url):
 	return return_result
 	
 def _snooze(headers):
-	None 
+	try:
+		RateLimit    = int(headers['X-RateLimit-Limit'])
+		LimitRemains = int(headers['X-RateLimit-Remaining'])
+	except KeyError as e:
+		print "WARNING: could not find rate-limit headers %s" % e
+		time.sleep(default_sleep)
+		return
+	snooze_period = 0.0
+	if snooze_routine == 'HOURLY':
+		allowance_used = 1.0 - (LimitRemains/RateLimit)	
+		if allowance_used > .5:
+			snooze_period = default_sleep * allowance_used
+		elif allowance_used > .8:
+			snooze_period = default_sleep * allowance_used * 2
+		elif allowance_used > .9:
+			snooze_period = default_sleep * allowance_used * 4
+	if snooze_period > 0:
+		time.sleep(default_sleep)
+		
+def main():
+	None
+		
+if __name__ == "__main__":
+	main()	
