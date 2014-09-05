@@ -7,7 +7,7 @@ import pypyodbc
 from datetime import datetime
 
 conf = ConfigParser.ConfigParser()
-conf.read(['init_local.ini','init.ini'])
+conf.read(['init.ini','init_local.ini'])
 
 dataset_format= conf.get('QUANDL','format')
 base_query    = conf.get('QUANDL','base_query')
@@ -17,13 +17,14 @@ fetch_retry   = int(conf.get('GLOBALS','default_retries'))
 default_sleep = int(conf.get('GLOBALS','default_sleep'))
 snooze_routine= conf.get('QUANDL','query_limit_period')
 
-
 class Quandl_sourcelist(object):
 	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
 		self.per_page = conf.get('QUANDL','per_page')
-		self.query = '%sdatasets.%s?%s&per_page=%s&auth_token=%s&' % \
-			(base_query,dataset_format,search_parameters,self.per_page,quantl_token)
-	def fetchResults(fetch_docs = True, fetch_sources=False):
+		self.query = '%sdatasets.%s?%s&per_page=%s&' % \
+			(base_query,dataset_format,search_parameters,self.per_page)
+		if quantl_token != '':
+			self.query = '%sauth_token=%s&' % (self.query,quantl_token)
+	def fetchResults(self, fetch_docs = True, fetch_sources = False):
 		page_number = 1
 		keep_querying = True
 		query_results_JSON = {}
@@ -33,13 +34,17 @@ class Quandl_sourcelist(object):
 			query_results_JSON['sources'] = []
 		
 		while keep_querying:
-			response_str = fetchUrl('%spage=%s' % self.query,page_number)
+			response_str = fetchUrl('%spage=%s' % (self.query,page_number))
+			
 			JSON_data = json.loads(response_str)
 			responses_reported = JSON_data['per_page']
-			data_returned = len(JSON_data['docs'])
+			data_returned = len(JSON_data['highlighting'])
+			
 			if data_returned < responses_reported:
 				keep_querying = False
 			
+			if page_number > 5:	#DEBUG
+				keep_querying = False
 			if fetch_docs:
 				for entry in JSON_data['docs']:
 					query_results_JSON['docs'].append(entry)
@@ -53,11 +58,12 @@ class Quandl_sourcelist(object):
 		
 def fetchUrl(url):	
 	return_result = ""
-	
+	print 'fetching %s' % url
 	request = urllib2.Request(url)
 	request.add_header('Accept-Encoding','gzip')
 	request.add_header('User-Agent','user_agent')
-	headers = []
+	headers = {}
+	response = ""
 	for tries in range (0,fetch_retry):
 		time.sleep(default_sleep*tries)
 		try:
@@ -67,11 +73,14 @@ def fetchUrl(url):
 			response = raw_response.read()
 		except urllib2.HTTPError as e:
 			print 'HTTPError:%s %s' % (e,url)
+			continue
 		except urllib2.URLError as e:
 			print 'URLError:%s %s' % (e,url)
+			continue
 		except socket.error as e:
 			print 'Socket Error:%s %s' % (e,url)
-	
+			continue
+		
 		_snooze(headers)
 		
 		do_gzip = False
@@ -88,8 +97,10 @@ def fetchUrl(url):
 				return_result = json.load(zipper)
 			except ValueError as e:
 				print "Empty response: retry %s" % url
+				continue
 			except IOError as e:
 				print "gzip unreadable: Retry %s" %url
+				continue
 			else:
 				break
 		else:
@@ -122,7 +133,11 @@ def _snooze(headers):
 		time.sleep(default_sleep)
 		
 def main():
-	None
+	test_obj = {}
+	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX')
+	print testQobj.query
+	test_obj = testQobj.fetchResults()
+	print test_obj
 		
 if __name__ == "__main__":
 	main()	
