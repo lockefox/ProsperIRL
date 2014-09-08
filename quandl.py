@@ -34,12 +34,13 @@ souces_db = conf.get('QUANDL','souces_db')
 
 
 class Quandl_sourcelist(object):
-	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
+	def __init__ (self,search_parameters,output_table=''): #search_parameters= 'query=*&source_code=_stuff_'
 		self.per_page = conf.get('QUANDL','per_page')
 		self.query = '%sdatasets.%s?%s&per_page=%s&' % \
 			(base_query,dataset_format,search_parameters,self.per_page)
 		if quantl_token != '':
 			self.query = '%sauth_token=%s&' % (self.query,quantl_token)
+		self.table = output_table
 	def fetchResults(self, fetch_docs = True, write_SQL = True, fetch_sources = False):
 		page_number = 1
 		keep_querying = True
@@ -59,12 +60,35 @@ class Quandl_sourcelist(object):
 			if data_returned < responses_reported:
 				keep_querying = False
 			
-			if page_number > 5:	#DEBUG
+			if page_number > 1:	#DEBUG
 				keep_querying = False
-			if fetch_docs:
-				for entry in JSON_data['docs']:
-					query_results_JSON['docs'].append(entry)
-			
+			if fetch_docs:                                      
+				for entry in JSON_data['docs']:                 #
+					query_results_JSON['docs'].append(entry)	#can cut for run time
+				if write_SQL and (self.table != ''):
+					cur.execute('SHOW COLUMNS FROM `%s`' % self.table)
+					table_info = cur.fetchall()
+					#TODO: if len(table_info)==0, exception
+					headers_list = []
+					for column in table_info:
+						headers_list.append(column[0])
+					
+					data_list = []
+					for entry in JSON_data['docs']:
+						tmp_data_list = []
+						tmp_data_list.append(entry['source_code'])
+						tmp_data_list.append(entry['code'])
+						tmp_data_list.append(entry['name'])
+						tmp_data_list.append(entry['frequency'])
+						tmp_data_list.append(entry['from_date'])
+						tmp_data_list.append(entry['to_date'])
+						tmp_data_list.append(entry['updated_at'])
+						tmp_data_list.append(entry['id'])
+						tmp_data_list.append(','.join(entry['column_names']))
+						#TODO: exception if len(tmp_data_list) != len(headers_list)
+						data_list.append(tmp_data_list)
+					
+					_writeSQL(self.table,headers_list,data_list)
 			if fetch_sources:
 				for entry in JSON_data['sources']:
 					query_results_JSON['sources'].append(entry)
@@ -168,12 +192,29 @@ def _initSQL():
 		print '%s.%s table:\tGOOD' % (db_schema,souces_db)
 	
 	
-	
+def _writeSQL(table, headers_list, data_list):
+	#insert_statement = 'INSERT INTO %s (\'%s) VALUES' % (table, '\',\''.join(headers_list))
+	insert_statement = 'INSERT INTO %s (%s) VALUES' % (table, ','.join(headers_list))
+	print insert_statement
+	for entry in data_list:
+		value_string = ''
+		for value in entry:
+			#TODO: convert YYYY-MM-DDTHH:MM:SS.SSSZ to TIMESTAMP
+			if isinstance(value, (int,long,float)): #if number, add value
+				value_string = '%s,%s' % ( value_string, value)
+			else:		#if string value: add 'value'
+				value_string = '%s,\'%s\'' % ( value_string, value)
+		value_string = value_string[1:]
+		print value_string
+		insert_statement = '%s (%s),' % (insert_statement, value_string)
+	print insert_statement
+	cur.execute(insert_statement[:-1])
+	cur.commit()
 def main():
 	_initSQL()
 	
 	test_obj = {}
-	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX')
+	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX',souces_db)
 	print testQobj.query
 	test_obj = testQobj.fetchResults()
 	print test_obj

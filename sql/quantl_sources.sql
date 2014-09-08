@@ -6,7 +6,7 @@ CREATE TABLE `quantl_sources` (
 	`frequency`	ENUM('none','daily','weekly','monthly','quarterly','annual') NULL DEFAULT 'none' ,
 	`from_date` DATE NULL,
 	`to_date`	DATE NULL,
-	`updated_at` DATETIME NOT NULL,
+	`updated_at` TIMESTAMP NOT NULL,
 	`id`		INT(8) NULL,
 	`columns`	MEDIUMTEXT NULL,
 	PRIMARY KEY (source(255),code(255)))
