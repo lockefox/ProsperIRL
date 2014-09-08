@@ -1,6 +1,7 @@
 #!/Python27/python.exe
 
 import sys, gzip, StringIO, sys, math, os, getopt, time, json, socket
+from os import path
 import urllib2
 import ConfigParser
 import pypyodbc
@@ -16,7 +17,7 @@ user_agent    = conf.get('GLOBALS','user_agent')
 fetch_retry   = int(conf.get('GLOBALS','default_retries'))
 default_sleep = int(conf.get('GLOBALS','default_sleep'))
 snooze_routine= conf.get('QUANDL','query_limit_period')
-
+script_dir = os.path.dirname(__file__)
 ####DB STUFF####
 db_host   = conf.get('GLOBALS','db_host')
 db_user   = conf.get('GLOBALS','db_user')
@@ -26,6 +27,11 @@ db_schema = conf.get('GLOBALS','db_schema')
 db_driver = conf.get('GLOBALS','db_driver')
 conn = pypyodbc.connect('DRIVER={%s};SERVER=%s;PORT=%s;UID=%s;PWD=%s;DATABASE=%s' \
 	% (db_driver,db_host,db_port,db_user,db_pw,db_schema))
+cur = conn.cursor()
+
+####TABLES####
+souces_db = conf.get('QUANDL','souces_db')
+
 
 class Quandl_sourcelist(object):
 	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
@@ -143,7 +149,23 @@ def _snooze(headers):
 		time.sleep(default_sleep)
 
 def _initSQL():
-	global engine,session
+	global conn,cur
+
+	cur.execute('''SHOW TABLES LIKE \'%s\'''' % souces_db)
+	sources_db_exists = len(cur.fetchall())
+	if sources_db_exists == 0:
+		sources_init = open(path.relpath('sql/%s.sql' % (souces_db)),'r').read()
+		sources_commands = sources_init.split(';') #split up... because SQL?!
+		try:
+			for command in sources_commands:
+				cur.execute(command)
+				conn.commit()
+		except Exception, e:
+			print e
+			sys.exit(2)
+		print '%s.%s table:\tCREATED' % (db_schema,souces_db)
+	else:
+		print '%s.%s table:\tGOOD' % (db_schema,souces_db)
 	
 	
 	
