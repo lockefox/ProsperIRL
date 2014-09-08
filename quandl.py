@@ -17,6 +17,16 @@ fetch_retry   = int(conf.get('GLOBALS','default_retries'))
 default_sleep = int(conf.get('GLOBALS','default_sleep'))
 snooze_routine= conf.get('QUANDL','query_limit_period')
 
+####DB STUFF####
+db_host   = conf.get('GLOBALS','db_host')
+db_user   = conf.get('GLOBALS','db_user')
+db_pw     = conf.get('GLOBALS','db_pw')
+db_port   = int(conf.get('GLOBALS','db_port'))
+db_schema = conf.get('GLOBALS','db_schema')
+db_driver = conf.get('GLOBALS','db_driver')
+conn = pypyodbc.connect('DRIVER={%s};SERVER=%s;PORT=%s;UID=%s;PWD=%s;DATABASE=%s' \
+	% (db_driver,db_host,db_port,db_user,db_pw,db_schema))
+
 class Quandl_sourcelist(object):
 	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
 		self.per_page = conf.get('QUANDL','per_page')
@@ -133,9 +143,13 @@ def _snooze(headers):
 		time.sleep(default_sleep)
 
 def _initSQL():
-	None
+	global engine,session
+	
+	
 	
 def main():
+	_initSQL()
+	
 	test_obj = {}
 	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX')
 	print testQobj.query
