@@ -202,7 +202,6 @@ def main():
 	
 	test_obj = {}
 	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX',souces_db)
-	testQobj.start_page = 36
 	print testQobj.query
 	
 	sources_table_headers = []
@@ -230,6 +229,6 @@ def main():
 			tmp_data_list.append(','.join(entry['column_names']))
 			data_list.append(tmp_data_list)
 			
-		_writeSQL(souces_db, sources_table_headers, data_list,True,True)
+		_writeSQL(souces_db, sources_table_headers, data_list)
 if __name__ == "__main__":
 	main()	
