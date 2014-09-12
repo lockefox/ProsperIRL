@@ -11,4 +11,4 @@ CREATE TABLE `quandl_sources` (
 	`columns`	MEDIUMTEXT NULL,
 	PRIMARY KEY (source(255),code(255)))
 	ENGINE=InnoDB DEFAULT CHARSET=latin1;
-CREATE INDEX source_freshness ON quantl_sources(updated_at)
+CREATE INDEX source_freshness ON quandl_sources(updated_at)
