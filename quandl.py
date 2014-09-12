@@ -43,13 +43,14 @@ class Quandl_sourcelist(object):
 		self.table = output_table
 		self.fetch_docs = True
 		self.fetch_sources = False
+		self.start_page = 1
 	def __iter__(self):
-		page_num = 1
+		page_num = self.start_page
 		keep_querying = True
 		query_results_JSON = {}
 		
 		while keep_querying:
-			JSON_data = fetchUrl('%spage=%s', % (self.query, page_num))
+			JSON_data = fetchUrl('%spage=%s' % (self.query, page_num))
 			responses_expected = JSON_data['per_page']
 			data_returned = len(JSON_data['docs'])
 			
@@ -64,60 +65,6 @@ class Quandl_sourcelist(object):
 			
 			page_num += 1
 			yield query_results_JSON
-	#def fetchResults(self, fetch_docs = True, write_SQL = True, fetch_sources = False):
-	#	page_number = 1
-	#	keep_querying = True
-	#	query_results_JSON = {}
-	#	if fetch_docs:
-	#		query_results_JSON['docs']    = []
-	#	if fetch_sources:
-	#		query_results_JSON['sources'] = []
-	#	
-	#	while keep_querying:
-	#		response_str = fetchUrl('%spage=%s' % (self.query,page_number))
-	#		
-	#		JSON_data = json.loads(response_str)
-	#		responses_reported = JSON_data['per_page']
-	#		data_returned = len(JSON_data['highlighting']) #originally pulled 'docs' but some id's are hidden from 'docs' and show on highlighting
-	#		
-	#		if data_returned < responses_reported:
-	#			keep_querying = False
-	#		
-	#		if page_number > 1:	#DEBUG
-	#			keep_querying = False
-	#		if fetch_docs:                                      
-	#			for entry in JSON_data['docs']:                 #
-	#				query_results_JSON['docs'].append(entry)	#can cut for run time
-	#			if write_SQL and (self.table != ''):
-	#				cur.execute('SHOW COLUMNS FROM `%s`' % self.table)
-	#				table_info = cur.fetchall()
-	#				#TODO: if len(table_info)==0, exception
-	#				headers_list = []
-	#				for column in table_info:
-	#					headers_list.append(column[0])
-	#				
-	#				data_list = []
-	#				for entry in JSON_data['docs']:
-	#					tmp_data_list = []
-	#					tmp_data_list.append(entry['source_code'])
-	#					tmp_data_list.append(entry['code'])
-	#					tmp_data_list.append(entry['name'])
-	#					tmp_data_list.append(entry['frequency'])
-	#					tmp_data_list.append(entry['from_date'])
-	#					tmp_data_list.append(entry['to_date'])
-	#					tmp_data_list.append(entry['updated_at'])
-	#					tmp_data_list.append(entry['id'])
-	#					tmp_data_list.append(','.join(entry['column_names']))
-	#					#TODO: exception if len(tmp_data_list) != len(headers_list)
-	#					data_list.append(tmp_data_list)
-	#				
-	#				_writeSQL(self.table,headers_list,data_list)
-	#		if fetch_sources:
-	#			for entry in JSON_data['sources']:
-	#				query_results_JSON['sources'].append(entry)
-	#		page_number +=1
-			
-		return query_results_JSON
 		
 def fetchUrl(url):	
 	return_result = ""
@@ -215,32 +162,72 @@ def _initSQL():
 		print '%s.%s table:\tGOOD' % (db_schema,souces_db)
 	
 	
-def _writeSQL(table, headers_list, data_list):
+def _writeSQL(table, headers_list, data_list, hard_overwrite=True, debug=False):
 	#insert_statement = 'INSERT INTO %s (\'%s) VALUES' % (table, '\',\''.join(headers_list))
 	insert_statement = 'INSERT INTO %s (%s) VALUES' % (table, ','.join(headers_list))
-	print insert_statement
+	if debug:
+		print insert_statement
 	for entry in data_list:
 		value_string = ''
 		for value in entry:
-			#TODO: convert YYYY-MM-DDTHH:MM:SS.SSSZ to TIMESTAMP
 			if isinstance(value, (int,long,float)): #if number, add value
 				value_string = '%s,%s' % ( value_string, value)
 			else:		#if string value: add 'value'
-				value_string = '%s,\'%s\'' % ( value_string, value)
+				if value == None:
+					value_string = '%s,NULL' % ( value_string)
+				else:
+					value_string = '%s,\'%s\'' % ( value_string, value)
 		value_string = value_string[1:]
-		print value_string
+		if debug:
+			print value_string
 		insert_statement = '%s (%s),' % (insert_statement, value_string)
-	print insert_statement
-	cur.execute(insert_statement[:-1])
+	
+	
+	insert_statement = insert_statement[:-1]	#pop off trailing ','
+	if hard_overwrite:
+		duplicate_str = "ON DUPLICATE KEY UPDATE "
+		for header in headers_list:
+			duplicate_str = "%s %s=%s," % (duplicate_str, header, header)
+		
+		insert_statement = "%s %s" % (insert_statement, duplicate_str)
+		insert_statement = insert_statement[:-1]	#pop off trailing ','
+	if debug:
+		print insert_statement
+	cur.execute(insert_statement)
 	cur.commit()
+	
 def main():
 	_initSQL()
 	
 	test_obj = {}
 	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX',souces_db)
 	print testQobj.query
-	test_obj = testQobj.fetchResults()
-	print test_obj
+	
+	sources_table_headers = []
+	cur.execute('SHOW COLUMNS FROM `%s`' % souces_db)
+	table_info = cur.fetchall()
+	#TODO: If len(table_info) == 0 exception
+	for column in table_info:
+		sources_table_headers.append(column[0])
 		
+	for JSON_page in testQobj:
+		data_list = []
+		for entry in JSON_page['docs']:
+			tmp_data_list = []
+			tmp_data_list.append(entry['source_code'])
+			tmp_data_list.append(entry['code'])
+			tmp_data_list.append(entry['name'])
+			tmp_data_list.append(entry['frequency'])
+			tmp_data_list.append(entry['from_date'])
+			tmp_data_list.append(entry['to_date'])
+			#--#
+			update_time = datetime.strptime(entry['updated_at'],'%Y-%m-%dT%H:%M:%S.%fZ')			
+			tmp_data_list.append(update_time.strftime('%Y-%m-%d %H:%M:%S'))
+			#--#
+			tmp_data_list.append(entry['id'])
+			tmp_data_list.append(','.join(entry['column_names']))
+			data_list.append(tmp_data_list)
+			
+		_writeSQL(souces_db, sources_table_headers, data_list)
 if __name__ == "__main__":
 	main()	
