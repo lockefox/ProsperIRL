@@ -41,58 +41,81 @@ class Quandl_sourcelist(object):
 		if quantl_token != '':
 			self.query = '%sauth_token=%s&' % (self.query,quantl_token)
 		self.table = output_table
-	def fetchResults(self, fetch_docs = True, write_SQL = True, fetch_sources = False):
-		page_number = 1
+		self.fetch_docs = True
+		self.fetch_sources = False
+	def __iter__(self):
+		page_num = 1
 		keep_querying = True
 		query_results_JSON = {}
-		if fetch_docs:
-			query_results_JSON['docs']    = []
-		if fetch_sources:
-			query_results_JSON['sources'] = []
 		
 		while keep_querying:
-			response_str = fetchUrl('%spage=%s' % (self.query,page_number))
+			JSON_data = fetchUrl('%spage=%s', % (self.query, page_num))
+			responses_expected = JSON_data['per_page']
+			data_returned = len(JSON_data['docs'])
 			
-			JSON_data = json.loads(response_str)
-			responses_reported = JSON_data['per_page']
-			data_returned = len(JSON_data['highlighting']) #originally pulled 'docs' but some id's are hidden from 'docs' and show on highlighting
-			
-			if data_returned < responses_reported:
+			if data_returned < responses_expected:
 				keep_querying = False
 			
-			if page_number > 1:	#DEBUG
-				keep_querying = False
-			if fetch_docs:                                      
-				for entry in JSON_data['docs']:                 #
-					query_results_JSON['docs'].append(entry)	#can cut for run time
-				if write_SQL and (self.table != ''):
-					cur.execute('SHOW COLUMNS FROM `%s`' % self.table)
-					table_info = cur.fetchall()
-					#TODO: if len(table_info)==0, exception
-					headers_list = []
-					for column in table_info:
-						headers_list.append(column[0])
-					
-					data_list = []
-					for entry in JSON_data['docs']:
-						tmp_data_list = []
-						tmp_data_list.append(entry['source_code'])
-						tmp_data_list.append(entry['code'])
-						tmp_data_list.append(entry['name'])
-						tmp_data_list.append(entry['frequency'])
-						tmp_data_list.append(entry['from_date'])
-						tmp_data_list.append(entry['to_date'])
-						tmp_data_list.append(entry['updated_at'])
-						tmp_data_list.append(entry['id'])
-						tmp_data_list.append(','.join(entry['column_names']))
-						#TODO: exception if len(tmp_data_list) != len(headers_list)
-						data_list.append(tmp_data_list)
-					
-					_writeSQL(self.table,headers_list,data_list)
-			if fetch_sources:
-				for entry in JSON_data['sources']:
-					query_results_JSON['sources'].append(entry)
-			page_number +=1
+			if self.fetch_docs:
+				query_results_JSON['docs'] = JSON_data['docs']
+
+			if self.fetch_sources:
+				query_results_JSON['sources']=JSON_data['sources']
+			
+			page_num += 1
+			yield query_results_JSON
+	#def fetchResults(self, fetch_docs = True, write_SQL = True, fetch_sources = False):
+	#	page_number = 1
+	#	keep_querying = True
+	#	query_results_JSON = {}
+	#	if fetch_docs:
+	#		query_results_JSON['docs']    = []
+	#	if fetch_sources:
+	#		query_results_JSON['sources'] = []
+	#	
+	#	while keep_querying:
+	#		response_str = fetchUrl('%spage=%s' % (self.query,page_number))
+	#		
+	#		JSON_data = json.loads(response_str)
+	#		responses_reported = JSON_data['per_page']
+	#		data_returned = len(JSON_data['highlighting']) #originally pulled 'docs' but some id's are hidden from 'docs' and show on highlighting
+	#		
+	#		if data_returned < responses_reported:
+	#			keep_querying = False
+	#		
+	#		if page_number > 1:	#DEBUG
+	#			keep_querying = False
+	#		if fetch_docs:                                      
+	#			for entry in JSON_data['docs']:                 #
+	#				query_results_JSON['docs'].append(entry)	#can cut for run time
+	#			if write_SQL and (self.table != ''):
+	#				cur.execute('SHOW COLUMNS FROM `%s`' % self.table)
+	#				table_info = cur.fetchall()
+	#				#TODO: if len(table_info)==0, exception
+	#				headers_list = []
+	#				for column in table_info:
+	#					headers_list.append(column[0])
+	#				
+	#				data_list = []
+	#				for entry in JSON_data['docs']:
+	#					tmp_data_list = []
+	#					tmp_data_list.append(entry['source_code'])
+	#					tmp_data_list.append(entry['code'])
+	#					tmp_data_list.append(entry['name'])
+	#					tmp_data_list.append(entry['frequency'])
+	#					tmp_data_list.append(entry['from_date'])
+	#					tmp_data_list.append(entry['to_date'])
+	#					tmp_data_list.append(entry['updated_at'])
+	#					tmp_data_list.append(entry['id'])
+	#					tmp_data_list.append(','.join(entry['column_names']))
+	#					#TODO: exception if len(tmp_data_list) != len(headers_list)
+	#					data_list.append(tmp_data_list)
+	#				
+	#				_writeSQL(self.table,headers_list,data_list)
+	#		if fetch_sources:
+	#			for entry in JSON_data['sources']:
+	#				query_results_JSON['sources'].append(entry)
+	#		page_number +=1
 			
 		return query_results_JSON
 		
@@ -144,7 +167,7 @@ def fetchUrl(url):
 			else:
 				break
 		else:
-			return_result = response
+			return_result = json.loads(response)
 			break
 	else:
 		print headers
