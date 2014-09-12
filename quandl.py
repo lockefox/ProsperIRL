@@ -176,6 +176,7 @@ def _writeSQL(table, headers_list, data_list, hard_overwrite=True, debug=False):
 				if value == None:
 					value_string = '%s,NULL' % ( value_string)
 				else:
+					value = value.replace('\'', '\\\'') #sanitize apostrophies
 					value_string = '%s,\'%s\'' % ( value_string, value)
 		value_string = value_string[1:]
 		if debug:
@@ -201,6 +202,7 @@ def main():
 	
 	test_obj = {}
 	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX',souces_db)
+	testQobj.start_page = 36
 	print testQobj.query
 	
 	sources_table_headers = []
@@ -228,6 +230,6 @@ def main():
 			tmp_data_list.append(','.join(entry['column_names']))
 			data_list.append(tmp_data_list)
 			
-		_writeSQL(souces_db, sources_table_headers, data_list)
+		_writeSQL(souces_db, sources_table_headers, data_list,True,True)
 if __name__ == "__main__":
 	main()	
