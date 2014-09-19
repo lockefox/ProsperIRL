@@ -31,17 +31,16 @@ conn = pypyodbc.connect('DRIVER={%s};SERVER=%s;PORT=%s;UID=%s;PWD=%s;DATABASE=%s
 cur = conn.cursor()
 
 ####TABLES####
-souces_db = conf.get('QUANDL','souces_db')
+sources_db = conf.get('QUANDL','souces_db')
 
 
 class Quandl_sourcelist(object):
-	def __init__ (self,search_parameters,output_table=''): #search_parameters= 'query=*&source_code=_stuff_'
+	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
 		self.per_page = conf.get('QUANDL','per_page')
 		self.query = '%sdatasets.%s?%s&per_page=%s&' % \
 			(base_query,dataset_format,search_parameters,self.per_page)
 		if quandl_token != '':
 			self.query = '%sauth_token=%s&' % (self.query,quandl_token)
-		self.table = output_table
 		self.fetch_docs = True
 		self.fetch_sources = False
 		self.start_page = 1
@@ -78,7 +77,24 @@ class Quandl_dataFeed(object):
 		
 	def fetchFeed(self):	#returns JSON from QUANDL
 		result = fetchUrl(self.query)
+		self.sources = self.load_sources(result)
 		return result
+	
+	def load_sources(self, JSON_return):	#Returns values for updating quandl_sources.sql
+		#returns: '''('feed_source','feed_code','feed_name','frequency','from_date','to_date','updated_at',id,'columns')'''
+			
+		return_str = '''('%s','%s','%s','%s','%s','%s','%s',%s,'%s')''' %(\
+			JSON_return['source_code'],\
+			JSON_return['code'],\
+			JSON_return['name'].replace('\'','\\\''),\
+			JSON_return['frequency'],\
+			JSON_return['from_date'],\
+			JSON_return['to_date'],\
+			updated_at_converter(JSON_return['updated_at']),\
+			JSON_return['id'],\
+			','.join(JSON_return['column_names'].replace('\'','\\\''))
+		
+		return return_str	
 		
 def fetchUrl(url):	
 	return_result = ""
@@ -211,15 +227,13 @@ def _writeSQL(table, headers_list, data_list, hard_overwrite=True, debug=False):
 	cur.execute(insert_statement)
 	cur.commit()
 	
-def main():
-	_initSQL()
-	
+def _query_feedSources(query = 'query=*&source_code=NASDAQOMX', destination_db = sources_db):
 	test_obj = {}
-	testQobj = Quandl_sourcelist('query=*&source_code=NASDAQOMX',souces_db)
+	testQobj = Quandl_sourcelist(query)
 	print testQobj.query
 	
 	sources_table_headers = []
-	cur.execute('SHOW COLUMNS FROM `%s`' % souces_db)
+	cur.execute('SHOW COLUMNS FROM `%s`' % destination_db)
 	table_info = cur.fetchall()
 	#TODO: If len(table_info) == 0 exception
 	for column in table_info:
@@ -235,14 +249,22 @@ def main():
 			tmp_data_list.append(entry['frequency'])
 			tmp_data_list.append(entry['from_date'])
 			tmp_data_list.append(entry['to_date'])
-			#--#
-			update_time = datetime.strptime(entry['updated_at'],'%Y-%m-%dT%H:%M:%S.%fZ')			
-			tmp_data_list.append(update_time.strftime('%Y-%m-%d %H:%M:%S'))
+			#--#	
+			tmp_data_list.append(updated_at_converter(entry['updated_at']))
 			#--#
 			tmp_data_list.append(entry['id'])
 			tmp_data_list.append(','.join(entry['column_names']))
 			data_list.append(tmp_data_list)
 			
-		_writeSQL(souces_db, sources_table_headers, data_list)
+		_writeSQL(destination_db, sources_table_headers, data_list)
+
+def updated_at_converter(update_at_str):
+	update_time = datetime.strptime(update_at_str)
+	return update_time.strftime('%Y-%m-%d %H:%M:%S')
+	
+def main():
+	_initSQL()
+	
+	
 if __name__ == "__main__":
 	main()	
