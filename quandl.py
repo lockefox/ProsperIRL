@@ -33,7 +33,6 @@ cur = conn.cursor()
 ####TABLES####
 sources_db = conf.get('QUANDL','souces_db')
 
-
 class Quandl_sourcelist(object):
 	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
 		self.per_page = conf.get('QUANDL','per_page')
@@ -198,7 +197,6 @@ def _initSQL():
 	else:
 		print '%s.%s table:\tGOOD' % (db_schema,souces_db)
 	
-	
 def _writeSQL(table, headers_list, data_list, hard_overwrite=True, debug=False):
 	#insert_statement = 'INSERT INTO %s (\'%s) VALUES' % (table, '\',\''.join(headers_list))
 	insert_statement = 'INSERT INTO %s (%s) VALUES' % (table, ','.join(headers_list))
@@ -271,7 +269,6 @@ def updated_at_converter(update_at_str):
 	
 def main():
 	_initSQL()
-	
-	
+		
 if __name__ == "__main__":
 	main()	
