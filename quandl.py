@@ -33,7 +33,7 @@ cur = conn.cursor()
 ####TABLES####
 sources_db = conf.get('QUANDL','souces_db')
 
-class Quandl_sourcelist(object):
+class SourceList(object):
 	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
 		self.per_page = conf.get('QUANDL','per_page')
 		self.query = '%sdatasets.%s?%s&per_page=%s&' % \
@@ -70,7 +70,7 @@ class Quandl_sourcelist(object):
 			page_num += 1
 			yield query_results_JSON
 
-class Quandl_dataFeed(object):
+class DataFeed(object):
 	def __init__(self,query_path):
 		self.query = '%s%s.%s?' % (base_query_v1,query_path,dataset_format)
 		if quandl_token != '':
@@ -234,7 +234,7 @@ def _writeSQL(table, headers_list, data_list, hard_overwrite=True, debug=False):
 	
 def _query_feedSources(query = 'query=*&source_code=NASDAQOMX', destination_db = sources_db):
 	test_obj = {}
-	testQobj = Quandl_sourcelist(query)
+	testQobj = SourceList(query)
 	print testQobj.query
 	
 	sources_table_headers = []
