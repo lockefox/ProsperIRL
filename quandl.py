@@ -44,6 +44,8 @@ class Quandl_sourcelist(object):
 		self.fetch_docs = True
 		self.fetch_sources = False
 		self.start_page = 1
+		self.end_page = 0
+		
 	def __iter__(self):
 		page_num = self.start_page
 		keep_querying = True
@@ -57,6 +59,9 @@ class Quandl_sourcelist(object):
 			if data_returned < responses_expected:
 				keep_querying = False
 			
+			if (end_page && end_page >= page_num):
+				keep_querying = False
+				
 			if self.fetch_docs:
 				query_results_JSON['docs'] = JSON_data['docs']
 
@@ -74,11 +79,13 @@ class Quandl_dataFeed(object):
 		self.args = ''
 		self.query = '%s%s' % (self.query, self.args)
 		self.sources = ''
+		self.data_array_headers = []
 		
-	def fetchFeed(self):	#returns JSON from QUANDL
+	def fetchResults(self):	#returns JSON from QUANDL
 		result = fetchUrl(self.query)
 		self.sources = self.load_sources(result)
-		return result
+		self.data_arary_headers = result['column_names']
+		return result['data']
 	
 	def load_sources(self, JSON_return):	#Returns values for updating quandl_sources.sql
 		#returns: '''('feed_source','feed_code','feed_name','frequency','from_date','to_date','updated_at',id,'columns')'''
