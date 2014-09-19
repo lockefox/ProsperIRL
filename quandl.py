@@ -13,7 +13,7 @@ conf.read(['init.ini','init_local.ini'])
 dataset_format= conf.get('QUANDL','format')
 base_query    = conf.get('QUANDL','base_query_v1')
 base_query_v1 = conf.get('QUANDL','base_query_v2')
-quantl_token  = conf.get('QUANDL','token')
+quandl_token  = conf.get('QUANDL','token')
 user_agent    = conf.get('GLOBALS','user_agent')
 fetch_retry   = int(conf.get('GLOBALS','default_retries'))
 default_sleep = int(conf.get('GLOBALS','default_sleep'))
@@ -39,8 +39,8 @@ class Quandl_sourcelist(object):
 		self.per_page = conf.get('QUANDL','per_page')
 		self.query = '%sdatasets.%s?%s&per_page=%s&' % \
 			(base_query,dataset_format,search_parameters,self.per_page)
-		if quantl_token != '':
-			self.query = '%sauth_token=%s&' % (self.query,quantl_token)
+		if quandl_token != '':
+			self.query = '%sauth_token=%s&' % (self.query,quandl_token)
 		self.table = output_table
 		self.fetch_docs = True
 		self.fetch_sources = False
@@ -66,6 +66,14 @@ class Quandl_sourcelist(object):
 			
 			page_num += 1
 			yield query_results_JSON
+
+class Quandl_dataFeed(object):
+	def __init__(self,query_path):
+		self.query = '%s%s.%s?' % (base_query_v1,query_path,dataset_format)
+		if quandl_token != '':
+			self.query = '%sauth_token=%s&' % (self.query, quandl_token)
+		self.args = ''
+		self.query = '%s%s' % (self.query, self.args)
 		
 def fetchUrl(url):	
 	return_result = ""
