@@ -74,6 +74,11 @@ class Quandl_dataFeed(object):
 			self.query = '%sauth_token=%s&' % (self.query, quandl_token)
 		self.args = ''
 		self.query = '%s%s' % (self.query, self.args)
+		self.sources = ''
+		
+	def fetchFeed(self):	#returns JSON from QUANDL
+		result = fetchUrl(self.query)
+		return result
 		
 def fetchUrl(url):	
 	return_result = ""
