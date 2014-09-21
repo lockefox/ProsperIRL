@@ -194,7 +194,7 @@ def _initSQL():
 			for command in sources_commands:
 				cur.execute(command)
 				conn.commit()
-		except Exception, e:
+		except Exception as e:
 			print e
 			sys.exit(2)
 		print '%s.%s table:\tCREATED' % (db_schema,souces_db)
