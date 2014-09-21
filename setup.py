@@ -41,7 +41,11 @@ def init_tables():
 					print e[1]
 					sys.exit(2)
 			print '%s.%s:\tCREATED' % (db_schema,name)
-		
+
+def load_stocklist():
+	#NASDAQ_List
+	None
+	
 def main():
 	global conn, cur
 	try:	#Test DB connection
@@ -53,7 +57,10 @@ def main():
 		print e[1]
 		sys.exit(2)
 	print 'DB connection:\tGOOD'
+	
 	init_tables()
+	
+	load_stocklist()
 
 if __name__ == "__main__":
 	main()	
