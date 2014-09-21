@@ -31,7 +31,8 @@ conn = pypyodbc.connect('DRIVER={%s};SERVER=%s;PORT=%s;UID=%s;PWD=%s;DATABASE=%s
 cur = conn.cursor()
 
 ####TABLES####
-sources_db = conf.get('QUANDL','souces_db')
+sources_db = conf.get('TABLES','quandl_souces_db')
+stats_db = conf.get('TABLES','stock_stats_db')
 
 class SourceList(object):
 	def __init__ (self,search_parameters): #search_parameters= 'query=*&source_code=_stuff_'
@@ -86,9 +87,12 @@ class DataFeed(object):
 		self.data_arary_headers = result['column_names']
 		return result['data']
 	
-	def load_sources(self, JSON_return):	#Returns values for updating quandl_sources.sql
+	def load_sources(self, JSON_return):	#Returns string for updating quandl_sources.sql
 		#returns: '''('feed_source','feed_code','feed_name','frequency','from_date','to_date','updated_at',id,'columns')'''
-			
+		try:
+			test_str = JSON_return['source_code']
+		except KeyError as e:
+			return ''
 		return_str = '''('%s','%s','%s','%s','%s','%s','%s',%s,'%s')''' %(\
 			JSON_return['source_code'],\
 			JSON_return['code'],\
@@ -196,6 +200,7 @@ def _initSQL():
 		print '%s.%s table:\tCREATED' % (db_schema,souces_db)
 	else:
 		print '%s.%s table:\tGOOD' % (db_schema,souces_db)
+	
 	
 def _writeSQL(table, headers_list, data_list, hard_overwrite=True, debug=False):
 	#insert_statement = 'INSERT INTO %s (\'%s) VALUES' % (table, '\',\''.join(headers_list))
