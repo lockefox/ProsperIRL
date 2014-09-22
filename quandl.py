@@ -204,7 +204,7 @@ def _initSQL():
 	
 def _writeSQL(table, headers_list, data_list, hard_overwrite=True, debug=False):
 	#insert_statement = 'INSERT INTO %s (\'%s) VALUES' % (table, '\',\''.join(headers_list))
-	insert_statement = 'INSERT INTO %s (%s) VALUES' % (table, ','.join(headers_list))
+	insert_statement = ''''INSERT INTO %s (%s) VALUES''' % (table, ','.join(headers_list))
 	if debug:
 		print insert_statement
 	for entry in data_list:
@@ -226,7 +226,7 @@ def _writeSQL(table, headers_list, data_list, hard_overwrite=True, debug=False):
 	
 	insert_statement = insert_statement[:-1]	#pop off trailing ','
 	if hard_overwrite:
-		duplicate_str = "ON DUPLICATE KEY UPDATE "
+		duplicate_str = '''ON DUPLICATE KEY UPDATE '''
 		for header in headers_list:
 			duplicate_str = "%s %s=%s," % (duplicate_str, header, header)
 		
@@ -243,7 +243,7 @@ def _query_feedSources(query = 'query=*&source_code=NASDAQOMX', destination_db =
 	print testQobj.query
 	
 	sources_table_headers = []
-	cur.execute('SHOW COLUMNS FROM `%s`' % destination_db)
+	cur.execute('''SHOW COLUMNS FROM `%s`''' % destination_db)
 	table_info = cur.fetchall()
 	#TODO: If len(table_info) == 0 exception
 	for column in table_info:
