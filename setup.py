@@ -53,12 +53,21 @@ def load_stocklist(hard_overwrite=True, debug=False):
 	header_str = ','.join(header)
 	base_sql_write = '''INSERT INTO %s (%s) VALUES ''' % (conf.get('TABLES','company_info_db'), header_str)
 
-	#NASDAQ_List
-	NASDAQ = open(path.relpath('references/%s' % conf.get('REFERENCES','nasdaq_list'))).read()
-	NASDAQ_list = _CSV_parse(NASDAQ)
+	print 'Writing:\tNASDAQ'
+	_write_companies(base_sql_write, conf.get('REFERENCES','nasdaq_list'), 'NASDAQ', header, hard_overwrite, debug)
 	
-	NASDAQ_commit = base_sql_write
-	for stock_info in NASDAQ_list:
+	print 'Writing:\tNYSE'
+	_write_companies(base_sql_write, conf.get('REFERENCES','nyse_list'), 'NYSE', header, hard_overwrite, debug)
+	
+	print 'Writing:\tAMEX'	
+	_write_companies(base_sql_write, conf.get('REFERENCES','amex_list'), 'AMEX', header, hard_overwrite, debug)
+	
+def _write_companies(base_insert_statement, csv_file, exchange_str, header, hard_overwrite=True, debug=False):
+	LIST_file = open(path.relpath('references/%s' % csv_file)).read()
+	LIST = _CSV_parse(LIST_file)
+	
+	LIST_commit = base_insert_statement
+	for stock_info in LIST:
 		if stock_info[0] == 'Symbol':	#skip headder
 			continue
 		if stock_info[0] == '':
@@ -66,96 +75,26 @@ def load_stocklist(hard_overwrite=True, debug=False):
 
 		data_str = '\'%s\',\'%s\',\'%s\',%s,\'%s\',\'%s\',\'%s\'' %(\
 			_NA_to_NULL(stock_info[0]),\
-			'NASDAQ',\
+			exchange_str,\
 			_NA_to_NULL(stock_info[1].replace('\'','\\\'')),\
 			_NA_to_NULL(stock_info[5]),\
 			_NA_to_NULL(stock_info[6]),\
 			_NA_to_NULL(stock_info[7]),\
 			_NA_to_NULL(stock_info[8]))
-		NASDAQ_commit = '%s (%s),' % (NASDAQ_commit, data_str)
+		LIST_commit = '%s (%s),' % (LIST_commit, data_str)
 	
-	NASDAQ_commit = NASDAQ_commit[:-1]	#remove trailing ','
-	NASDAQ_commit = NASDAQ_commit.replace('\'NULL\'','NULL') #get proper NULLs in string cols
+	LIST_commit = LIST_commit[:-1]	#remove trailing ','
+	LIST_commit = LIST_commit.replace('\'NULL\'','NULL') #get proper NULLs in string cols
 	if hard_overwrite:
 		duplicate_str = '''ON DUPLICATE KEY UPDATE'''
 		for head in header:
 			duplicate_str = '%s %s=%s,' % (duplicate_str, head, head)
-		NASDAQ_commit = '%s %s' % (NASDAQ_commit, duplicate_str)
-		NASDAQ_commit = NASDAQ_commit[:-1]	#remove trailing ','
+		LIST_commit = '%s %s' % (LIST_commit, duplicate_str)
+		LIST_commit = LIST_commit[:-1]	#remove trailing ','
 	
 	if debug:
-		print NASDAQ_commit
-	cur.execute(NASDAQ_commit)
-	cur.commit()
-	
-	#NYSE_List
-	NYSE = open(path.relpath('references/%s' % conf.get('REFERENCES','nyse_list'))).read()
-	NYSE_list = _CSV_parse(NYSE)
-	
-	NYSE_commit = base_sql_write
-	for stock_info in NYSE_list:
-		if stock_info[0] == 'Symbol':	#skip headder
-			continue
-		if stock_info[0] == '':
-			break
-
-		data_str = '\'%s\',\'%s\',\'%s\',%s,\'%s\',\'%s\',\'%s\'' %(\
-			_NA_to_NULL(stock_info[0]),\
-			'NYSE',\
-			_NA_to_NULL(stock_info[1].replace('\'','\\\'')),\
-			_NA_to_NULL(stock_info[5]),\
-			_NA_to_NULL(stock_info[6]),\
-			_NA_to_NULL(stock_info[7]),\
-			_NA_to_NULL(stock_info[8]))
-		NYSE_commit = '%s (%s),' % (NYSE_commit, data_str)
-	
-	NYSE_commit = NYSE_commit[:-1]	#remove trailing ','
-	NYSE_commit = NYSE_commit.replace('\'NULL\'','NULL') #get proper NULLs in string cols
-	if hard_overwrite:
-		duplicate_str = '''ON DUPLICATE KEY UPDATE'''
-		for head in header:
-			duplicate_str = '%s %s=%s,' % (duplicate_str, head, head)
-		NYSE_commit = '%s %s' % (NYSE_commit, duplicate_str)
-		NYSE_commit = NYSE_commit[:-1]	#remove trailing ','
-	
-	if debug:
-		print NYSE_commit
-	cur.execute(NYSE_commit)
-	cur.commit()
-	
-	#AMEX_List
-	AMEX = open(path.relpath('references/%s' % conf.get('REFERENCES','amex_list'))).read()
-	AMEX_list = _CSV_parse(AMEX)
-	
-	AMEX_commit = base_sql_write
-	for stock_info in AMEX_list:
-		if stock_info[0] == 'Symbol':	#skip headder
-			continue
-		if stock_info[0] == '':
-			break
-
-		data_str = '\'%s\',\'%s\',\'%s\',%s,\'%s\',\'%s\',\'%s\'' %(\
-			_NA_to_NULL(stock_info[0]),\
-			'AMEX',\
-			_NA_to_NULL(stock_info[1].replace('\'','\\\'')),\
-			_NA_to_NULL(stock_info[5]),\
-			_NA_to_NULL(stock_info[6]),\
-			_NA_to_NULL(stock_info[7]),\
-			_NA_to_NULL(stock_info[8]))
-		AMEX_commit = '%s (%s),' % (AMEX_commit, data_str)
-	
-	AMEX_commit = AMEX_commit[:-1]	#remove trailing ','
-	AMEX_commit = AMEX_commit.replace('\'NULL\'','NULL') #get proper NULLs in string cols
-	if hard_overwrite:
-		duplicate_str = '''ON DUPLICATE KEY UPDATE'''
-		for head in header:
-			duplicate_str = '%s %s=%s,' % (duplicate_str, head, head)
-		AMEX_commit = '%s %s' % (AMEX_commit, duplicate_str)
-		AMEX_commit = AMEX_commit[:-1]	#remove trailing ','
-	
-	if debug:
-		print AMEX_commit
-	cur.execute(AMEX_commit)
+		print LIST_commit
+	cur.execute(LIST_commit)
 	cur.commit()
 def _NA_to_NULL(str_parse):
 	if str_parse.lower() == 'n/a':
